@@ -1,13 +1,15 @@
-// frontend/utils/api.js
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+// ========================================
+// FICHIER 1: frontend/utils/api.js (VERSION CORRIGÉE)
+// ========================================
 
-// Helper fetch avec gestion d'erreurs
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 const fetchAPI = async (endpoint, options = {}) => {
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
     },
-    credentials: 'include', // Pour envoyer les cookies de session
+    credentials: 'include',
   };
 
   try {
@@ -34,7 +36,7 @@ const fetchAPI = async (endpoint, options = {}) => {
 };
 
 // ============================================
-// AUTH API
+// AUTH API - CORRIGÉ
 // ============================================
 
 export const login = async (credentials) => {
@@ -57,23 +59,30 @@ export const logout = async () => {
   });
 };
 
+// ✅ CORRECTION: Fonction unifiée qui renvoie toujours le même format
 export const checkAuth = async () => {
   try {
-    return await fetchAPI('/auth/me');
+    const response = await fetchAPI('/auth/me');
+    return {
+      authenticated: true,
+      user: response.user
+    };
   } catch (error) {
-    return { user: null };
+    return { 
+      authenticated: false,
+      user: null 
+    };
   }
 };
 
+// Cette fonction n'est plus nécessaire mais on la garde pour compatibilité
 export const checkAuthStatus = async () => {
-  return fetchAPI('/auth/check');
+  return checkAuth();
 };
-
 
 // ============================================
 // USERS API
 // ============================================
-
 
 export const updateUserProfile = async (userData) => {
   return fetchAPI('/users/profile', {
@@ -95,15 +104,6 @@ export const deleteAccount = async () => {
   });
 };
 
-
-
-
-
-
-
-
-
-
 export const getUserProfile = async () => {
   return fetchAPI('/users/profile');
 };
@@ -114,8 +114,6 @@ export const updateProfile = async (userData) => {
     body: JSON.stringify(userData),
   });
 };
-
-
 
 export const getUserStats = async () => {
   return fetchAPI('/users/stats');
@@ -191,31 +189,19 @@ export const fetchDishesByCategory = async (categoryId) => {
 // MENUS API
 // ============================================
 
-/**
- * Récupère tous les menus actifs avec leurs plats
- */
 export async function fetchMenus() {
   return fetchAPI('/menus');
 }
 
-/**
- * Récupère un menu spécifique par ID
- */
 export async function fetchMenuById(id) {
   const response = await fetchAPI(`/menus/${id}`);
   return response.menu;
 }
 
-/**
- * Récupère les menus par type
- */
 export async function fetchMenusByType(type) {
   return fetchAPI(`/menus/type/${type}`);
 }
 
-/**
- * Créer un nouveau menu (admin)
- */
 export async function createMenu(menuData) {
   return fetchAPI('/menus', {
     method: 'POST',
@@ -223,9 +209,6 @@ export async function createMenu(menuData) {
   });
 }
 
-/**
- * Mettre à jour un menu (admin)
- */
 export async function updateMenu(id, menuData) {
   return fetchAPI(`/menus/${id}`, {
     method: 'PUT',
@@ -233,9 +216,6 @@ export async function updateMenu(id, menuData) {
   });
 }
 
-/**
- * Supprimer un menu (admin)
- */
 export async function deleteMenu(id) {
   return fetchAPI(`/menus/${id}`, {
     method: 'DELETE',
@@ -245,8 +225,6 @@ export async function deleteMenu(id) {
 // ============================================
 // RESERVATIONS API
 // ============================================
-
-
 
 export const createReservation = async (reservationData) => {
   try {
@@ -310,10 +288,6 @@ export const checkAvailability = async (reservationData) => {
   }
 };
 
-
-
-
-
 export const fetchUserReservations = async () => {
   return fetchAPI('/reservations/my');
 };
@@ -328,8 +302,6 @@ export const updateReservation = async (id, reservationData) => {
     body: JSON.stringify(reservationData),
   });
 };
-
-
 
 // ============================================
 // FAVORITES API

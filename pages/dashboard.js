@@ -9,6 +9,8 @@ import { checkAuth, logout, fetchSettings } from '../utils/api';
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // ✅ NOUVEAU
+  const [authLoading, setAuthLoading] = useState(true); // ✅ NOUVEAU
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
