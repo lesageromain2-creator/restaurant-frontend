@@ -39,6 +39,7 @@ export default function Header({ settings = {} }) {
             <Link href="/categories" className="nav-link">Carte</Link>
             <Link href="/menus" className="nav-link">Menus</Link>
             <Link href="/reservation" className="nav-link">Réserver</Link>
+             <Link href="/favorites" className="nav-link"> Mes favoris</Link>
             <Link href="/contact" className="nav-link">Contact</Link>
             <Link href="/dashboard" className="nav-link">Dashboard</Link>
           </nav>

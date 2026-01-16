@@ -1,112 +1,38 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, X, ChefHat, Star, Sparkles, AlertCircle, ShoppingCart } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { Search, Filter, X, ChefHat, AlertCircle, ShoppingCart, Heart, Loader } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-
-
+import { 
+  fetchSettings, 
+  addFavorite, 
+  removeFavorite, 
+  fetchFavorites, 
+  checkAuth 
+} from '../utils/api';
 
 export default function Categories() {
+  const router = useRouter();
+  
+  // États de base
   const [settings, setSettings] = useState({
     site_name: "Le Gourmet Parisien",
     show_prices: "1",
     show_allergens: "1"
   });
   
-  const [categories, setCategories] = useState([
-    { id_category: 1, name: "Entrées", dish_count: 12 },
-    { id_category: 2, name: "Plats", dish_count: 18 },
-    { id_category: 3, name: "Desserts", dish_count: 10 },
-    { id_category: 4, name: "Boissons", dish_count: 25 },
-    { id_category: 5, name: "Poissons", dish_count: 8 },
-    { id_category: 6, name: "Viandes", dish_count: 15 }
-  ]);
-
-  const [allDishes] = useState([
-    {
-      id_dish: 1,
-      name: "Foie Gras Poêlé",
-      description: "Accompagné de figues confites et pain d'épices, une symphonie de saveurs automnales",
-      price: 28.50,
-      category_name: "Entrées",
-      category_id: 1,
-      image: "https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=800&q=80",
-      allergens: "Foie gras"
-    },
-    {
-      id_dish: 2,
-      name: "Carpaccio de Saint-Jacques",
-      description: "Marinées aux agrumes, huile d'olive vierge et caviar d'Aquitaine",
-      price: 32.00,
-      category_name: "Entrées",
-      category_id: 1,
-      image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
-      allergens: "Crustacés"
-    },
-    {
-      id_dish: 3,
-      name: "Bœuf Rossini",
-      description: "Filet de bœuf, foie gras poêlé, sauce truffée et légumes de saison",
-      price: 45.00,
-      category_name: "Plats",
-      category_id: 2,
-      image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80"
-    },
-    {
-      id_dish: 4,
-      name: "Homard Bleu",
-      description: "Cuit à la perfection, beurre blanc aux herbes fraîches",
-      price: 58.00,
-      category_name: "Plats",
-      category_id: 2,
-      image: "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?w=800&q=80",
-      allergens: "Crustacés"
-    },
-    {
-      id_dish: 5,
-      name: "Bar de Ligne",
-      description: "Rôti, accompagné de légumes croquants et émulsion citronnée",
-      price: 42.00,
-      category_name: "Poissons",
-      category_id: 5,
-      image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80",
-      allergens: "Poisson"
-    },
-    {
-      id_dish: 6,
-      name: "Tarte Tatin Revisitée",
-      description: "Pommes caramélisées, glace vanille bourbon et caramel au beurre salé",
-      price: 12.00,
-      category_name: "Desserts",
-      category_id: 3,
-      image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80",
-      allergens: "Gluten, Lactose"
-    },
-    {
-      id_dish: 7,
-      name: "Soufflé au Grand Marnier",
-      description: "Léger et aérien, servi avec sa crème anglaise",
-      price: 14.00,
-      category_name: "Desserts",
-      category_id: 3,
-      image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=800&q=80",
-      allergens: "Œufs, Lactose"
-    },
-    {
-      id_dish: 8,
-      name: "Châteaubriand Sauce Béarnaise",
-      description: "Pièce de bœuf tendre, sauce béarnaise maison et pommes grenaille",
-      price: 52.00,
-      category_name: "Viandes",
-      category_id: 6,
-      image: "https://images.unsplash.com/photo-1558030006-450675393462?w=800&q=80"
-    }
-  ]);
-
+  const [categories, setCategories] = useState([]);
+  const [allDishes, setAllDishes] = useState([]);
+  const [dishes, setDishes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [dishes, setDishes] = useState(allDishes);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // États favoris
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [togglingFavorite, setTogglingFavorite] = useState(null);
 
   const categoryIcons = {
     'Entrées': '🥗',
@@ -117,25 +43,141 @@ export default function Categories() {
     'Viandes': '🥩'
   };
 
+  // ============================================
+  // CHARGEMENT INITIAL
+  // ============================================
   useEffect(() => {
-    setIsVisible(true);
+    loadInitialData();
+    setTimeout(() => setIsVisible(true), 100);
   }, []);
 
   useEffect(() => {
     filterDishes();
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, searchTerm, allDishes]);
 
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      
+      // Charger settings et auth
+      const [settingsData, authData] = await Promise.all([
+        fetchSettings(),
+        checkAuth()
+      ]);
+      
+      setSettings(settingsData);
+      setIsAuthenticated(authData.authenticated);
+      
+      // Charger catégories et plats depuis Supabase
+      await loadCategoriesAndDishes();
+      
+      // Si authentifié, charger favoris
+      if (authData.authenticated) {
+        await loadFavorites();
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement initial:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============================================
+  // CHARGER CATÉGORIES ET PLATS DEPUIS SUPABASE
+  // ============================================
+  const loadCategoriesAndDishes = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      
+      // Récupérer les catégories
+      const categoriesRes = await fetch(`${API_URL}/categories`, {
+        credentials: 'include'
+      });
+      const categoriesData = await categoriesRes.json();
+      
+      // Récupérer tous les plats
+      const dishesRes = await fetch(`${API_URL}/dishes`, {
+        credentials: 'include'
+      });
+      const dishesData = await dishesRes.json();
+      
+      setCategories(categoriesData.categories || []);
+      setAllDishes(dishesData.dishes || []);
+      setDishes(dishesData.dishes || []);
+      
+      console.log('✅ Chargé:', categoriesData.categories?.length, 'catégories et', dishesData.dishes?.length, 'plats');
+    } catch (error) {
+      console.error('❌ Erreur chargement données:', error);
+    }
+  };
+
+  // ============================================
+  // GESTION DES FAVORIS
+  // ============================================
+  
+  const loadFavorites = async () => {
+  try {
+    const data = await fetchFavorites();
+    
+    // ✅ CORRECTION: data contient { success: true, favorites: [...], count: X }
+    const favoritesArray = data.favorites || [];
+    const favoriteIds = favoritesArray.map(fav => fav.id_dish);
+    
+    setFavorites(favoriteIds);
+    console.log('✅ Favoris chargés:', favoriteIds.length);
+  } catch (error) {
+    console.error('❌ Erreur chargement favoris:', error);
+  }
+};
+
+
+  const isFavorite = (dishId) => {
+    return favorites.includes(dishId);
+  };
+
+  const handleToggleFavorite = async (e, dishId) => {
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      if (confirm('Vous devez être connecté pour ajouter des favoris. Se connecter maintenant ?')) {
+        router.push('/login?redirect=/categories');
+      }
+      return;
+    }
+
+    try {
+      setTogglingFavorite(dishId);
+      
+      if (isFavorite(dishId)) {
+        await removeFavorite(dishId);
+        setFavorites(prev => prev.filter(id => id !== dishId));
+      } else {
+        await addFavorite(dishId);
+        setFavorites(prev => [...prev, dishId]);
+      }
+    } catch (error) {
+      console.error('❌ Erreur toggle favori:', error);
+      alert('Impossible de modifier les favoris');
+    } finally {
+      setTogglingFavorite(null);
+    }
+  };
+
+  // ============================================
+  // FILTRAGE DES PLATS
+  // ============================================
   const filterDishes = () => {
-    let filtered = allDishes;
+    let filtered = [...allDishes];
 
     if (selectedCategory) {
       filtered = filtered.filter(dish => dish.category_id === selectedCategory);
     }
 
     if (searchTerm) {
+      const search = searchTerm.toLowerCase();
       filtered = filtered.filter(dish => 
-        dish.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        dish.description.toLowerCase().includes(searchTerm.toLowerCase())
+        dish.name.toLowerCase().includes(search) ||
+        dish.description?.toLowerCase().includes(search)
       );
     }
 
@@ -147,11 +189,28 @@ export default function Categories() {
   };
 
   const handleOrder = (dish) => {
-    alert(`Commander: ${dish.name} - ${dish.price.toFixed(2)}€\n\nRéservez une table pour profiter de ce plat !`);
+    alert(`Commander: ${dish.name} - ${parseFloat(dish.price).toFixed(2)}€\n\nRéservez une table pour profiter de ce plat !`);
   };
 
   const selectedCat = categories.find(c => c.id_category === selectedCategory);
 
+  // ============================================
+  // AFFICHAGE LOADING
+  // ============================================
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-12 h-12 animate-spin text-red-600 mx-auto mb-4" />
+          <p className="text-gray-600">Chargement de la carte...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Header settings={settings} />
@@ -224,15 +283,8 @@ export default function Categories() {
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg'
                 }`}
               >
-                <span className="text-lg">{categoryIcons[category.name] || '🍴'}</span>
+                <span className="text-lg">{category.icon || categoryIcons[category.name] || '🍴'}</span>
                 {category.name}
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  selectedCategory === category.id_category
-                    ? 'bg-white/20'
-                    : 'bg-gray-100'
-                }`}>
-                  {category.dish_count}
-                </span>
               </button>
             ))}
           </div>
@@ -242,7 +294,7 @@ export default function Categories() {
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl md:text-4xl font-black text-gray-800">
             {selectedCat 
-              ? `${categoryIcons[selectedCat.name] || '🍴'} ${selectedCat.name}` 
+              ? `${selectedCat.icon || categoryIcons[selectedCat.name] || '🍴'} ${selectedCat.name}` 
               : '🌟 Tous nos plats'}
           </h2>
           <div className="text-gray-600 font-semibold">
@@ -253,89 +305,111 @@ export default function Categories() {
         {/* Grille de plats */}
         {dishes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {dishes.map((dish, index) => (
-              <div
-                key={dish.id_dish}
-                className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
-                style={{
-                  animation: `fadeInUp 0.6s ease-out forwards`,
-                  animationDelay: `${index * 50}ms`,
-                  opacity: 0,
-                  animationFillMode: 'forwards'
-                }}
-              >
-                <div className="relative h-56 overflow-hidden">
-                  {dish.image ? (
-                    <img
-                      src={dish.image}
-                      alt={dish.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center text-white text-6xl">
-                      🍽️
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  
-                  {dish.allergens && settings.show_allergens === '1' && (
-                    <div className="absolute top-3 right-3 p-2 bg-yellow-400/90 backdrop-blur-sm rounded-full">
-                      <AlertCircle className="w-5 h-5 text-yellow-900" />
-                    </div>
-                  )}
-                </div>
+            {dishes.map((dish, index) => {
+              const isFav = isFavorite(dish.id_dish);
+              const isToggling = togglingFavorite === dish.id_dish;
 
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-semibold">
-                      {dish.category_name}
-                    </span>
-                    {index < 3 && (
-                      <div className="flex items-center gap-1 text-yellow-500">
-                        <Sparkles className="w-4 h-4" />
-                        <span className="text-xs font-semibold">Nouveau</span>
+              return (
+                <div
+                  key={dish.id_dish}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
+                  style={{
+                    animation: `fadeInUp 0.6s ease-out forwards`,
+                    animationDelay: `${index * 50}ms`,
+                    opacity: 0,
+                    animationFillMode: 'forwards'
+                  }}
+                >
+                  <div className="relative h-56 overflow-hidden">
+                    {dish.image_url ? (
+                      <img
+                        src={dish.image_url}
+                        alt={dish.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center text-white text-6xl">
+                        🍽️
                       </div>
                     )}
-                  </div>
-
-                  <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-red-600 transition-colors">
-                    {dish.name}
-                  </h3>
-
-                  {dish.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {dish.description}
-                    </p>
-                  )}
-
-                  {dish.allergens && settings.show_allergens === '1' && (
-                    <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-xs text-yellow-800 flex items-center gap-2">
-                        <AlertCircle className="w-3 h-3" />
-                        Allergènes: {dish.allergens}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    {settings.show_prices === '1' && (
-                      <div className="text-3xl font-black bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
-                        {dish.price.toFixed(2)}€
-                      </div>
-                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     
-                    <button
-                      onClick={() => handleOrder(dish)}
-                      className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-full font-semibold hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      Commander
-                    </button>
+                    {/* Bouton Favori */}
+                    {isAuthenticated && (
+                      <button
+                        onClick={(e) => handleToggleFavorite(e, dish.id_dish)}
+                        disabled={isToggling}
+                        className={`favorite-btn ${isFav ? 'active' : ''} ${isToggling ? 'toggling' : ''}`}
+                        title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                      >
+                        {isToggling ? (
+                          <Loader className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Heart 
+                            className="heart-icon"
+                            fill={isFav ? 'currentColor' : 'none'}
+                            size={22}
+                          />
+                        )}
+                      </button>
+                    )}
+
+                    {dish.allergens && settings.show_allergens === '1' && (
+                      <div className="absolute top-3 left-3 p-2 bg-yellow-400/90 backdrop-blur-sm rounded-full">
+                        <AlertCircle className="w-5 h-5 text-yellow-900" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-semibold">
+                        {dish.category_name || 'Plat'}
+                      </span>
+                      {dish.is_vegetarian && (
+                        <span className="text-green-600 text-xs font-semibold">🌱 Végétarien</span>
+                      )}
+                    </div>
+
+                    <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-red-600 transition-colors">
+                      {dish.name}
+                    </h3>
+
+                    {dish.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {dish.description}
+                      </p>
+                    )}
+
+                    {dish.allergens && settings.show_allergens === '1' && (
+                      <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-xs text-yellow-800 flex items-center gap-2">
+                          <AlertCircle className="w-3 h-3" />
+                          Allergènes: {dish.allergens}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      {settings.show_prices === '1' && (
+                        <div className="text-3xl font-black bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                          {parseFloat(dish.price).toFixed(2)}€
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={() => handleOrder(dish)}
+                        className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-full font-semibold hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        Commander
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
@@ -378,6 +452,84 @@ export default function Categories() {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+
+        .favorite-btn {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(10px);
+          border: none;
+          color: #DC2626;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          z-index: 10;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .favorite-btn:hover:not(:disabled) {
+          transform: scale(1.15);
+          box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+        }
+
+        .favorite-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .favorite-btn.active {
+          color: #DC2626;
+          background: rgba(252, 165, 165, 0.2);
+        }
+
+        .favorite-btn.toggling {
+          animation: pulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
+
+        .heart-icon {
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .favorite-btn:hover:not(:disabled) .heart-icon {
+          transform: scale(1.2);
+        }
+
+        .favorite-btn.active .heart-icon {
+          animation: heartbeat 0.6s ease-in-out;
+        }
+
+        @keyframes heartbeat {
+          0% {
+            transform: scale(1);
+          }
+          25% {
+            transform: scale(1.3);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          75% {
+            transform: scale(1.25);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
       `}</style>
     </div>

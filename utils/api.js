@@ -305,12 +305,23 @@ export const updateReservation = async (id, reservationData) => {
   });
 };
 
+
+export const deleteReservation = async (id) => {
+  return fetchAPI(`/reservations/${id}`, {
+    method: 'DELETE',
+  });
+};
+
 // ============================================
 // FAVORITES API
 // ============================================
 
+
+
 export const fetchFavorites = async () => {
-  return fetchAPI('/favorites');
+  const response = await fetchAPI('/favorites');
+  // Response structure: { success: true, favorites: [...], count: X }
+  return response;
 };
 
 export const addFavorite = async (dishId) => {
@@ -326,8 +337,14 @@ export const removeFavorite = async (dishId) => {
   });
 };
 
-export const isFavorite = async (dishId) => {
-  return fetchAPI(`/favorites/${dishId}/check`);
+export const checkIsFavorite = async (dishId) => {
+  const response = await fetchAPI(`/favorites/check/${dishId}`);
+  return response.isFavorite;
+};
+
+export const getFavoritesCount = async () => {
+  const response = await fetchAPI('/favorites/count');
+  return response.count;
 };
 
 // ============================================

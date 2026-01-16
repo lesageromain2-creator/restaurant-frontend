@@ -1208,6 +1208,9 @@ export default function Register() {
             grid-template-columns: 1fr;
           }
         }
+
+
+        
       `}</style>
     </>
   );

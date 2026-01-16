@@ -1,3 +1,5 @@
+//menu/[id].js
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -37,7 +39,7 @@ export default function MenuDetail() {
       setSettings(settingsData);
 
       // Charger le menu spécifique depuis l'API
-      const response = await fetch(`http://localhost:5000/api/menus/${id}`);
+      const response = await fetch(`http://localhost:5000/menus/${id}`);
       
       if (!response.ok) {
         throw new Error('Menu non trouvé');
