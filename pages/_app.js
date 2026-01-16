@@ -1,9 +1,3 @@
-import '../styles/globals.css'
-
-function MyApp({ Component, pageProps }) {
-  return <Component {...pageProps} />
-}
-
 // pages/_app.js
 import { useEffect } from "react";
 
@@ -31,3 +25,4 @@ function MyApp({ Component, pageProps }) {
 }
 
 export default MyApp;
+
